@@ -140,3 +140,46 @@
   margin-bottom: 0.5rem;
   color: var(--text);
 }
+
+.back-btn {
+  display: none;
+  margin-bottom: 1rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .app-header {
+    padding: 1rem 1.25rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .app-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 70px);
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    height: calc(100vh - 70px);
+  }
+
+  .main-content {
+    padding: 1rem;
+    min-height: calc(100vh - 70px);
+  }
+
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  .back-btn {
+    display: inline-block;
+  }
+}

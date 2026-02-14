@@ -116,3 +116,20 @@
 .interaction-delete:hover {
   color: var(--danger);
 }
+
+@media (max-width: 640px) {
+  .interaction-form-row {
+    flex-direction: column;
+  }
+
+  .interaction-form select,
+  .interaction-form input,
+  .interaction-form textarea {
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+  }
+
+  .interaction-delete {
+    opacity: 1;
+  }
+}

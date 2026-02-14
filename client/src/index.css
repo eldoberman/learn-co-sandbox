@@ -43,3 +43,12 @@ textarea {
   font-family: inherit;
   font-size: 0.925rem;
 }
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}

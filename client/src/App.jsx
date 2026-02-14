@@ -24,6 +24,7 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [favoriteFilter, setFavoriteFilter] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mobileView, setMobileView] = useState('list'); // 'list' or 'detail'
 
   const loadContacts = useCallback(async () => {
     try {
@@ -44,9 +45,22 @@ export default function App() {
     loadContacts();
   }, [loadContacts]);
 
+  const handleSelect = (id) => {
+    setSelectedId(id);
+    setMobileView('detail');
+  };
+
+  const handleBack = () => {
+    setMobileView('list');
+    setSelectedId(null);
+    setShowForm(false);
+    setEditingContact(null);
+  };
+
   const handleCreate = () => {
     setEditingContact(null);
     setShowForm(true);
+    setMobileView('detail');
   };
 
   const handleEdit = (contact) => {
@@ -98,7 +112,7 @@ export default function App() {
       </header>
 
       <div className="app-layout">
-        <aside className="sidebar">
+        <aside className={`sidebar ${mobileView === 'detail' ? 'mobile-hidden' : ''}`}>
           <button className="btn btn-primary btn-block" onClick={handleCreate}>
             + Add Contact
           </button>
@@ -135,26 +149,36 @@ export default function App() {
           <ContactList
             contacts={contacts}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleSelect}
             onToggleFavorite={handleToggleFavorite}
             loading={loading}
           />
         </aside>
 
-        <main className="main-content">
+        <main className={`main-content ${mobileView === 'list' ? 'mobile-hidden' : ''}`}>
           {showForm ? (
-            <ContactForm
-              contact={editingContact}
-              onSave={handleSave}
-              onCancel={() => { setShowForm(false); setEditingContact(null); }}
-            />
+            <div>
+              <button className="btn btn-secondary back-btn" onClick={handleBack}>
+                &larr; Back
+              </button>
+              <ContactForm
+                contact={editingContact}
+                onSave={handleSave}
+                onCancel={() => { setShowForm(false); setEditingContact(null); setMobileView('list'); }}
+              />
+            </div>
           ) : selectedId ? (
-            <ContactDetail
-              contactId={selectedId}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onToggleFavorite={handleToggleFavorite}
-            />
+            <div>
+              <button className="btn btn-secondary back-btn" onClick={handleBack}>
+                &larr; Back
+              </button>
+              <ContactDetail
+                contactId={selectedId}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            </div>
           ) : (
             <div className="empty-state">
               <div className="empty-icon">&#128203;</div>
