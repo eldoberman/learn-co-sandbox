@@ -1,11 +1,11 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
 
 const router = express.Router();
 
 // List interactions for a contact
 router.get('/contact/:contactId', (req, res) => {
+  const db = req.db;
   const interactions = db.prepare(`
     SELECT * FROM interactions WHERE contact_id = ? ORDER BY date DESC
   `).all(req.params.contactId);
@@ -15,6 +15,7 @@ router.get('/contact/:contactId', (req, res) => {
 
 // Create interaction
 router.post('/', (req, res) => {
+  const db = req.db;
   const { contact_id, type, title, notes, date } = req.body;
 
   if (!contact_id || !title) {
@@ -36,6 +37,7 @@ router.post('/', (req, res) => {
 
 // Update interaction
 router.put('/:id', (req, res) => {
+  const db = req.db;
   const existing = db.prepare('SELECT * FROM interactions WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Interaction not found' });
 
@@ -57,6 +59,7 @@ router.put('/:id', (req, res) => {
 
 // Delete interaction
 router.delete('/:id', (req, res) => {
+  const db = req.db;
   const result = db.prepare('DELETE FROM interactions WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Interaction not found' });
   res.status(204).end();

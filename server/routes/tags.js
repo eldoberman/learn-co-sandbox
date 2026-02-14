@@ -1,10 +1,10 @@
 const express = require('express');
-const db = require('../db');
 
 const router = express.Router();
 
 // List all tags with contact counts
 router.get('/', (req, res) => {
+  const db = req.db;
   const tags = db.prepare(`
     SELECT t.id, t.name, COUNT(ct.contact_id) as contact_count
     FROM tags t

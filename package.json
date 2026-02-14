@@ -12,10 +12,9 @@
     "setup": "npm install && cd client && npm install"
   },
   "dependencies": {
-    "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
-    "multer": "^2.0.2",
+    "sql.js": "^1.11.0",
     "uuid": "^10.0.0"
   },
   "devDependencies": {

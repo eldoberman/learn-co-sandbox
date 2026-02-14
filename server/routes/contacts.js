@@ -1,11 +1,11 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
 
 const router = express.Router();
 
 // List all contacts with optional search/filter
 router.get('/', (req, res) => {
+  const db = req.db;
   const { search, category, tag, favorite } = req.query;
 
   let query = `
@@ -41,17 +41,14 @@ router.get('/', (req, res) => {
 
   const contacts = db.prepare(query).all(...params);
 
-  // Attach tags to each contact
-  const tagStmt = db.prepare(`
-    SELECT t.id, t.name FROM tags t
-    JOIN contact_tags ct ON t.id = ct.tag_id
-    WHERE ct.contact_id = ?
-  `);
-
   const result = contacts.map(contact => ({
     ...contact,
     favorite: !!contact.favorite,
-    tags: tagStmt.all(contact.id),
+    tags: db.prepare(`
+      SELECT t.id, t.name FROM tags t
+      JOIN contact_tags ct ON t.id = ct.tag_id
+      WHERE ct.contact_id = ?
+    `).all(contact.id),
   }));
 
   res.json(result);
@@ -59,6 +56,7 @@ router.get('/', (req, res) => {
 
 // Get single contact with tags and recent interactions
 router.get('/:id', (req, res) => {
+  const db = req.db;
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
 
@@ -82,6 +80,7 @@ router.get('/:id', (req, res) => {
 
 // Create contact
 router.post('/', (req, res) => {
+  const db = req.db;
   const id = uuidv4();
   const {
     first_name, last_name, category, email, phone,
@@ -90,17 +89,15 @@ router.post('/', (req, res) => {
 
   if (!first_name) return res.status(400).json({ error: 'first_name is required' });
 
-  const stmt = db.prepare(`
+  db.prepare(`
     INSERT INTO contacts (id, first_name, last_name, category, email, phone, birthday, address, company, job_title, photo_url, notes, favorite)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  stmt.run(id, first_name, last_name || null, category || 'other', email || null,
+  `).run(id, first_name, last_name || null, category || 'other', email || null,
     phone || null, birthday || null, address || null, company || null,
     job_title || null, photo_url || null, notes || null, favorite ? 1 : 0);
 
   if (tags && tags.length > 0) {
-    setContactTags(id, tags);
+    setContactTags(db, id, tags);
   }
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
@@ -113,6 +110,7 @@ router.post('/', (req, res) => {
 
 // Update contact
 router.put('/:id', (req, res) => {
+  const db = req.db;
   const existing = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
 
@@ -121,15 +119,13 @@ router.put('/:id', (req, res) => {
     birthday, address, company, job_title, photo_url, notes, favorite, tags,
   } = req.body;
 
-  const stmt = db.prepare(`
+  db.prepare(`
     UPDATE contacts SET
       first_name = ?, last_name = ?, category = ?, email = ?, phone = ?,
       birthday = ?, address = ?, company = ?, job_title = ?, photo_url = ?,
       notes = ?, favorite = ?, updated_at = datetime('now')
     WHERE id = ?
-  `);
-
-  stmt.run(
+  `).run(
     first_name ?? existing.first_name,
     last_name ?? existing.last_name,
     category ?? existing.category,
@@ -146,7 +142,7 @@ router.put('/:id', (req, res) => {
   );
 
   if (tags !== undefined) {
-    setContactTags(req.params.id, tags);
+    setContactTags(db, req.params.id, tags);
   }
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
@@ -159,6 +155,10 @@ router.put('/:id', (req, res) => {
 
 // Delete contact
 router.delete('/:id', (req, res) => {
+  const db = req.db;
+  // Manually delete related records since sql.js doesn't reliably cascade
+  db.prepare('DELETE FROM contact_tags WHERE contact_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM interactions WHERE contact_id = ?').run(req.params.id);
   const result = db.prepare('DELETE FROM contacts WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Contact not found' });
   res.status(204).end();
@@ -166,17 +166,18 @@ router.delete('/:id', (req, res) => {
 
 // Toggle favorite
 router.patch('/:id/favorite', (req, res) => {
+  const db = req.db;
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
 
-  db.prepare('UPDATE contacts SET favorite = ?, updated_at = datetime(\'now\') WHERE id = ?')
+  db.prepare("UPDATE contacts SET favorite = ?, updated_at = datetime('now') WHERE id = ?")
     .run(contact.favorite ? 0 : 1, req.params.id);
 
   const updated = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   res.json({ ...updated, favorite: !!updated.favorite });
 });
 
-function setContactTags(contactId, tagNames) {
+function setContactTags(db, contactId, tagNames) {
   db.prepare('DELETE FROM contact_tags WHERE contact_id = ?').run(contactId);
 
   for (const name of tagNames) {
