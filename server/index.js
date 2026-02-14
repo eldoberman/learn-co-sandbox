@@ -2,18 +2,36 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const initDb = require('./db');
+const { initSheets } = require('./sheets');
 
 async function start() {
-  const db = await initDb();
-
   const app = express();
   const PORT = process.env.PORT || 3001;
 
   app.use(cors());
   app.use(express.json());
 
-  // Make db available to routes via req.db
+  // Try Google Sheets first, fall back to local SQLite
+  let crm = null;
+  let db = null;
+
+  try {
+    crm = await initSheets();
+    if (crm) {
+      console.log('Connected to Google Sheets');
+    }
+  } catch (err) {
+    console.log('Google Sheets not configured, using local database:', err.message);
+  }
+
+  if (!crm) {
+    db = await initDb();
+    console.log('Using local SQLite database');
+  }
+
+  // Make data layer available to routes
   app.use((req, res, next) => {
+    req.crm = crm;
     req.db = db;
     next();
   });
